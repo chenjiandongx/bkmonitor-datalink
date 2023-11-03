@@ -39,6 +39,10 @@ func Pretty(rtype define.RecordType, data interface{}) {
 	case define.RecordMetrics:
 		pdMetrics := data.(pmetric.Metrics)
 		Metrics(pdMetrics)
+
+	case define.RecordLogs:
+		pdLogs := data.(plog.Logs)
+		Logs(pdLogs)
 	}
 }
 
