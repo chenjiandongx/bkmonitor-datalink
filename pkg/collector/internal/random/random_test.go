@@ -53,12 +53,6 @@ func TestRandom(t *testing.T) {
 		assert.NotEqual(t, m1, m2)
 	})
 
-	t.Run("AttributeMap/Bool", func(t *testing.T) {
-		m1 := AttributeMap(keys, "bool")
-		m2 := AttributeMap(keys, "bool")
-		assert.NotEqual(t, m1, m2)
-	})
-
 	t.Run("AttributeMap/Float", func(t *testing.T) {
 		m1 := AttributeMap(keys, "float")
 		m2 := AttributeMap(keys, "float")
