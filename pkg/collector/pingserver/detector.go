@@ -69,8 +69,8 @@ func newDetector(addrs []*net.IPAddr, times int, timeout time.Duration) Detector
 	}
 }
 
-func (pp *detector) OnRecv(addr *net.IPAddr, rtt time.Duration) {
-	resp, ok := pp.result[addr.String()]
+func (d *detector) OnRecv(addr *net.IPAddr, rtt time.Duration) {
+	resp, ok := d.result[addr.String()]
 	if !ok {
 		return
 	}
@@ -85,23 +85,23 @@ func (pp *detector) OnRecv(addr *net.IPAddr, rtt time.Duration) {
 	resp.RecvCount++
 }
 
-func (pp *detector) OnIdle() {}
+func (d *detector) OnIdle() {}
 
-func (pp *detector) Do() {
-	for _, addr := range pp.addrs {
-		pp.pinger.AddIPAddr(addr)
-		pp.result[addr.String()] = newResponse(addr)
+func (d *detector) Do() {
+	for _, addr := range d.addrs {
+		d.pinger.AddIPAddr(addr)
+		d.result[addr.String()] = newResponse(addr)
 	}
 
-	pp.pinger.MaxRTT = pp.timeout
-	pp.pinger.Times = pp.times
-	pp.pinger.OnRecv = pp.OnRecv
-	pp.pinger.OnIdle = pp.OnIdle
+	d.pinger.MaxRTT = d.timeout
+	d.pinger.Times = d.times
+	d.pinger.OnRecv = d.OnRecv
+	d.pinger.OnIdle = d.OnIdle
 
-	pp.pinger.RunLoop()
-	<-pp.pinger.Done()
+	d.pinger.RunLoop()
+	<-d.pinger.Done()
 }
 
-func (pp *detector) Result() map[string]*Response {
-	return pp.result
+func (d *detector) Result() map[string]*Response {
+	return d.result
 }
