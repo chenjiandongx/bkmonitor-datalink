@@ -71,3 +71,17 @@ func TestRandom(t *testing.T) {
 		assert.NotEqual(t, m1, m2)
 	})
 }
+
+func BenchmarkRandomDimensions(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		Dimensions(10)
+	}
+}
+
+func BenchmarkFastRandomDimensions(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		FastDimensions(10)
+	}
+}

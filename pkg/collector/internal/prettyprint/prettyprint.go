@@ -13,6 +13,7 @@ import (
 	"runtime"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
+	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 
@@ -69,6 +70,20 @@ func Metrics(metrics pmetric.Metrics) {
 			rsAttrs.AsRaw(),
 			metric.Name(),
 			metric.DataType().String(),
+		)
+	})
+}
+
+func Logs(logs plog.Logs) {
+	if !onPretty() {
+		return
+	}
+
+	foreach.LogsWithResourceAttrs(logs.ResourceLogs(), func(rsAttrs pcommon.Map, logRecord plog.LogRecord) {
+		logger.Debugf("Pretty/Logs: resource=%#v, body=%s, logAttributes=%#v",
+			rsAttrs.AsRaw(),
+			logRecord.Body().AsString(),
+			logRecord.Attributes().AsRaw(),
 		)
 	})
 }
