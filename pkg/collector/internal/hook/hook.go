@@ -105,7 +105,6 @@ func (s *ScriptExecutor) execute(script string) ScriptResult {
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "bash", "-c", script)
-
 	return ScriptResult{
 		Script: script,
 		Err:    cmd.Run(),

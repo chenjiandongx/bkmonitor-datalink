@@ -40,7 +40,12 @@ func newResponse(addr *net.IPAddr) *Response {
 	}
 }
 
-type PingPong struct {
+type Detector interface {
+	Do()
+	Result() map[string]*Response
+}
+
+type detector struct {
 	addrs   []*net.IPAddr
 	times   int
 	timeout time.Duration
@@ -48,14 +53,14 @@ type PingPong struct {
 	result  map[string]*Response
 }
 
-func NewPingPong(addrs []*net.IPAddr, times int, timeout time.Duration) *PingPong {
+func newDetector(addrs []*net.IPAddr, times int, timeout time.Duration) Detector {
 	if times <= 0 {
 		times = defaultSendTimes
 	}
 	if timeout <= 0 {
 		timeout = defaultSendTimeout
 	}
-	return &PingPong{
+	return &detector{
 		pinger:  fastping.NewPinger(),
 		addrs:   addrs,
 		times:   times,
@@ -64,7 +69,7 @@ func NewPingPong(addrs []*net.IPAddr, times int, timeout time.Duration) *PingPon
 	}
 }
 
-func (pp *PingPong) OnRecv(addr *net.IPAddr, rtt time.Duration) {
+func (pp *detector) OnRecv(addr *net.IPAddr, rtt time.Duration) {
 	resp, ok := pp.result[addr.String()]
 	if !ok {
 		return
@@ -80,9 +85,9 @@ func (pp *PingPong) OnRecv(addr *net.IPAddr, rtt time.Duration) {
 	resp.RecvCount++
 }
 
-func (pp *PingPong) OnIdle() {}
+func (pp *detector) OnIdle() {}
 
-func (pp *PingPong) Do() {
+func (pp *detector) Do() {
 	for _, addr := range pp.addrs {
 		pp.pinger.AddIPAddr(addr)
 		pp.result[addr.String()] = newResponse(addr)
@@ -97,6 +102,6 @@ func (pp *PingPong) Do() {
 	<-pp.pinger.Done()
 }
 
-func (pp *PingPong) Result() map[string]*Response {
+func (pp *detector) Result() map[string]*Response {
 	return pp.result
 }
