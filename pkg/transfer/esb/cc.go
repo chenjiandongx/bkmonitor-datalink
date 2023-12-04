@@ -192,11 +192,15 @@ func (c *CCApiClient) GetSearchBusiness() ([]CCSearchBusinessResponseInfo, error
 		APIResponse
 		Data *CCSearchBusinessResponseData `json:"data"`
 	}{}
-	// 请求并将结果写入到result中
-	response, err := c.Agent().Post("search_business/").BodyProvider(&json.Provider{Payload: &CCSearchBusinessRequest{
+
+	payload := &CCSearchBusinessRequest{
 		CommonArgs: c.client.CommonArgs(),
 		Fields:     []string{"bk_biz_id", "bk_biz_name"},
-	}}).Receive(&result /* success */, &result /* failed */)
+	}
+	logging.Debugf("get business payload: %+v", payload)
+
+	// 请求并将结果写入到result中
+	response, err := c.Agent().Post("search_business/").BodyProvider(&json.Provider{Payload: payload}).Receive(&result /* success */, &result /* failed */)
 	if err != nil {
 		c.SearchBusinessCounter.CounterFails.Inc()
 		logging.Errorf("get business failed: %v, %v", result, err)
