@@ -197,7 +197,7 @@ func (c *CCApiClient) GetSearchBusiness() ([]CCSearchBusinessResponseInfo, error
 		CommonArgs: c.client.CommonArgs(),
 		Fields:     []string{"bk_biz_id", "bk_biz_name"},
 	}
-	logging.Debugf("get business payload: %+v", payload)
+	logging.Debugf("get business payload.fields: %+v, commonArgs: %+v", payload.Fields, payload.CommonArgs)
 
 	// 请求并将结果写入到result中
 	response, err := c.Agent().Post("search_business/").BodyProvider(&json.Provider{Payload: payload}).Receive(&result /* success */, &result /* failed */)
