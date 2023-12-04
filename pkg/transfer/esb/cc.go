@@ -203,12 +203,13 @@ func (c *CCApiClient) GetSearchBusiness() ([]CCSearchBusinessResponseInfo, error
 		return nil, err
 	}
 
-	logging.Debugf("get business response: %d, %v", response.StatusCode, result.Message)
+	logging.Debugf("get business response: %d, code=%d, message=%s", response.StatusCode, result.Code, result.Message)
 	if result.Data == nil {
 		c.SearchBusinessCounter.CounterFails.Inc()
 		logging.Errorf("%s query from cc error %d: %v", result.RequestID, result.Code, result.Message)
 		return nil, errors.Wrapf(define.ErrOperationForbidden, result.Message)
 	}
+	logging.Debugf("get business count=%d, data=%+v", result.Data.Count, result.Data.Info)
 
 	c.SearchBusinessCounter.CounterSuccesses.Inc()
 

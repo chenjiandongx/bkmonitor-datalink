@@ -374,8 +374,8 @@ func Fatalf(template string, args ...interface{}) {
 	std.Fatalf(template, args...)
 }
 
-func WarnIf(template string, args ...interface{}) {
-	std.Warnf(template, args...)
+func WarnIf(message string, err error) {
+	std.WarnIf(message, err)
 }
 
 func PanicIf(err error) {
