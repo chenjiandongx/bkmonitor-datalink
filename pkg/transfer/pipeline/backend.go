@@ -161,7 +161,7 @@ func getBufferSizeAndFlushInterval(ctx context.Context, name string) (int, time.
 	flushInterval := BulkDefaultFlushInterval
 	shipperConfig, ok := ctx.Value(define.ContextShipperKey).(*config.MetaClusterInfo)
 	if !ok {
-		logging.Warn("get shipper config failed,use default bufferSize and flushInterval")
+		logging.Errorf("get shipper config failed,use default bufferSize and flushInterval")
 		return bufferSize, flushInterval
 	}
 	if shipperConfig.BatchSize != 0 {
@@ -173,7 +173,10 @@ func getBufferSizeAndFlushInterval(ctx context.Context, name string) (int, time.
 			flushInterval = interval
 		}
 	}
-	logging.Debugf("backend:%s use bufferSize:%d and flushInterval:%s", name, bufferSize, flushInterval)
+	logging.Errorf("backend:%s use bufferSize:%d and flushInterval:%s", name, bufferSize, flushInterval)
+
+	c := config.MQConfigFromContext(ctx)
+	logging.Errorf("mando:test, batchsize: %v, interval: %s", c.BatchSize, c.FlushInterval)
 
 	return bufferSize, flushInterval
 }
