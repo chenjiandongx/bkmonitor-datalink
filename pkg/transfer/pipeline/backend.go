@@ -176,7 +176,11 @@ func getBufferSizeAndFlushInterval(ctx context.Context, name string) (int, time.
 	logging.Errorf("backend:%s use bufferSize:%d and flushInterval:%s", name, bufferSize, flushInterval)
 
 	c := config.MQConfigFromContext(ctx)
-	logging.Errorf("mando:test, batchsize: %v, interval: %s", c.BatchSize, c.FlushInterval)
+	if c != nil {
+		logging.Errorf("mando:test, batchsize: %v, interval: %s", c.BatchSize, c.FlushInterval)
+	} else {
+		logging.Errorf("mando:test...")
+	}
 
 	return bufferSize, flushInterval
 }
