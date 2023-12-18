@@ -61,8 +61,8 @@ make_package () {
             #VERSION=$(cat VERSION).$(git describe --dirty="-dev" --always --match "NOT A TAG")
             #GO111MODULE=off
             GO_BUILD_TAGS="basetask basescheduler bkmonitorbeat"
-            # 仅当 linux+flag 才使用 sonic 构建
-            if [ $PERF_MODE -ge 1 ] && [ ${operating_system} = "linux" ]; then
+            # 仅当 linux+amd64+flag 才使用 sonic 构建
+            if [ $PERF_MODE -ge 1 ] && [ ${operating_system} = "linux" ] && [ ${cpu_arch} = "x86_64" ]; then
               GO_BUILD_TAGS="basetask basescheduler bkmonitorbeat jsonsonic"
             fi
             echo "build tags ${GO_BUILD_TAGS}"
