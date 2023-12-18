@@ -60,6 +60,7 @@ make_package () {
         if [ ${operating_system} = "linux" ] || [ ${operating_system} = "windows" ] ; then
             #VERSION=$(cat VERSION).$(git describe --dirty="-dev" --always --match "NOT A TAG")
             #GO111MODULE=off
+            echo "PERF_MODE: ${PERF_MODE}"
             GO_BUILD_TAGS="basetask basescheduler bkmonitorbeat"
             if [ $PERF_MODE -ge 1 ]; then
               GO_BUILD_TAGS="basetask basescheduler bkmonitorbeat jsonsonic"
