@@ -15,6 +15,7 @@ SOURCE_PATH=.
 DIST_PATH=${RELEASE_PATH}
 BUILD_PATH=./build
 WITH_FREEBSD=0
+PERF_MODE=${PERF_MODE}
 
 setEnv() {
   echo "setEnv $1=$2"
@@ -58,8 +59,13 @@ make_package () {
 
         if [ ${operating_system} = "linux" ] || [ ${operating_system} = "windows" ] ; then
             #VERSION=$(cat VERSION).$(git describe --dirty="-dev" --always --match "NOT A TAG")
-             #GO111MODULE=off
-            CGO_ENABLED=0 GO111MODULE=on GOOS=${operating_system} GOARCH=${go_arch} go build -tags "basetask basescheduler bkmonitorbeat" -ldflags=" -X main.BeatName=${plugin_name} -X main.Version=${plugin_version}" -o ${bin_dir}/${plugin_name}${suffix} main.go||exit 1
+            #GO111MODULE=off
+            GO_BUILD_TAGS="basetask basescheduler bkmonitorbeat"
+            if [ $PERF_MODE -ge 1 ]; then
+              GO_BUILD_TAGS="basetask basescheduler bkmonitorbeat jsonsonic"
+            fi
+            echo "build tags ${GO_BUILD_TAGS}"
+            CGO_ENABLED=0 GO111MODULE=on GOOS=${operating_system} GOARCH=${go_arch} go build -tags "${GO_BUILD_TAGS}" -ldflags=" -X main.BeatName=${plugin_name} -X main.Version=${plugin_version}" -o ${bin_dir}/${plugin_name}${suffix} main.go||exit 1
         elif [ ${operating_system} = "freebsd" ]; then
             cp ${plugin_name}_${operating_system} ${bin_dir}/${plugin_name}${suffix}
         else

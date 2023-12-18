@@ -5,6 +5,7 @@ BUILD_NO ?= 1
 COMMIT_ID = $(shell git rev-parse HEAD)
 MODULE = ''
 RELEASE ?= false
+PERF_MODE=0
 
 MODULE_VERSION = $(subst v,ee-V, $(shell cat $(PWD)/pkg/$(MODULE)/VERSION||echo ''))
 BRANCH ?= $(shell git symbolic-ref --short HEAD)
@@ -30,7 +31,7 @@ all: bkmonitorbeat collector operator transfer unify-query influxdb-proxy ingest
 build: .check_module_vars
 	mkdir -p $(RELEASE_PATH)/$(MODULE)
 	@echo make module: $(MODULE) BUILD_NO: $(BUILD_NO) COMMIT_ID: $(COMMIT_ID)
-	cd $(PWD)/pkg/$(MODULE) && make RELEASE_PATH=$(RELEASE_PATH)/$(MODULE) VERSION=$(VERSION) BUILD_NO=$(BUILD_NO) COMMIT_ID=$(COMMIT_ID) build
+	cd $(PWD)/pkg/$(MODULE) && make RELEASE_PATH=$(RELEASE_PATH)/$(MODULE) VERSION=$(VERSION) BUILD_NO=$(BUILD_NO) COMMIT_ID=$(COMMIT_ID) PERF_MODE=$(PERF_MODE) build
 
 .PHONY: bkmonitorbeat
 bkmonitorbeat:
