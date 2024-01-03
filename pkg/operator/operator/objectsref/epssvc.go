@@ -28,6 +28,7 @@ type addressEntity struct {
 
 type endpointsEntity struct {
 	name      string
+	namespace string
 	addresses []addressEntity
 	labels    map[string]string
 }
@@ -86,6 +87,7 @@ func (m *EpsSvcMap) UpsertEndpoints(endpoints *corev1.Endpoints) {
 
 	m.endpoints[endpoints.Namespace][endpoints.Name] = endpointsEntity{
 		name:      endpoints.Name,
+		namespace: endpoints.Namespace,
 		addresses: addressEntities,
 		labels:    endpoints.Labels,
 	}

@@ -18,16 +18,16 @@ func TestMetricsToPrometheusFormat(t *testing.T) {
 		rows := []RelationMetric{
 			{
 				Name: "usage",
-				Dimension: map[string]string{
-					"cpu": "1",
-					"biz": "0",
+				Labels: []RelationLabel{
+					{Name: "cpu", Value: "1"},
+					{Name: "biz", Value: "0"},
 				},
 			},
 			{
 				Name: "usage",
-				Dimension: map[string]string{
-					"cpu": "2",
-					"biz": "0",
+				Labels: []RelationLabel{
+					{Name: "cpu", Value: "2"},
+					{Name: "biz", Value: "0"},
 				},
 			},
 		}

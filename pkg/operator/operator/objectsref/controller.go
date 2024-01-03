@@ -43,6 +43,7 @@ type Object struct {
 	ID        ObjectID
 	OwnerRefs []OwnerRef
 	NodeName  string
+	PodIP     string
 }
 
 // ObjectID 代表 workload 对象标识
@@ -327,6 +328,7 @@ func newPodObjects(ctx context.Context, sharedInformer informers.SharedInformerF
 				},
 				OwnerRefs: toRefs(pod.OwnerReferences),
 				NodeName:  pod.Spec.NodeName,
+				PodIP:     pod.Status.PodIP,
 			})
 		},
 		UpdateFunc: func(_, newObj interface{}) {
@@ -342,6 +344,7 @@ func newPodObjects(ctx context.Context, sharedInformer informers.SharedInformerF
 				},
 				OwnerRefs: toRefs(pod.OwnerReferences),
 				NodeName:  pod.Spec.NodeName,
+				PodIP:     pod.Status.PodIP,
 			})
 		},
 		DeleteFunc: func(obj interface{}) {

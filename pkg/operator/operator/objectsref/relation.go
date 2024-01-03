@@ -13,8 +13,6 @@ import (
 	"bytes"
 )
 
-// NOTE: 实验性功能（Experimental）后续可能会持续迭代 或者删除
-
 const (
 	relationNodeSystem           = "node_with_system_relation"
 	relationNodePod              = "node_with_pod_relation"
@@ -23,45 +21,48 @@ const (
 	relationPodStatefulset       = "pod_with_statefulset_relation"
 	relationDaemonsetPod         = "daemonset_with_pod_relation"
 	relationDeploymentReplicaset = "deployment_with_replicaset_relation"
-
-	// TODO(mando): 待实现
-	relationAddressEndpoint        = "address_with_endpoint_relation"
-	relationEndpointService        = "endpoint_with_service_relation"
-	relationIngressServiceRelation = "ingress_with_service_relation"
+	relationAddressEndpoint      = "address_with_endpoint_relation"
+	relationEndpointService      = "endpoint_with_service_relation"
+	relationAddressPod           = "address_with_pod_relation"
 )
 
 type RelationMetric struct {
-	Name      string
-	Dimension map[string]string
+	Name   string
+	Labels []RelationLabel
 }
 
-func (oc *ObjectsController) GetNodeRelation() []RelationMetric {
+type RelationLabel struct {
+	Name  string
+	Value string
+}
+
+func (oc *ObjectsController) GetNodeRelations() []RelationMetric {
 	var metrics []RelationMetric
 	for node, ip := range oc.nodeObjs.Addrs() {
 		metrics = append(metrics, RelationMetric{
 			Name: relationNodeSystem,
-			Dimension: map[string]string{
-				"node":         node,
-				"bk_target_ip": ip,
+			Labels: []RelationLabel{
+				{Name: "node", Value: node},
+				{Name: "bk_target_ip", Value: ip},
 			},
 		})
 	}
 	return metrics
 }
 
-func (oc *ObjectsController) GetEpSvcRelation() []RelationMetric {
+func (oc *ObjectsController) GetEpSvcRelations() []RelationMetric {
 	var metrics []RelationMetric
 	appendAddrMetrics := func(ns, epName string, addresses []addressEntity) {
 		for _, addr := range addresses {
 			for _, port := range addr.ports {
 				metrics = append(metrics, RelationMetric{
 					Name: relationAddressEndpoint,
-					Dimension: map[string]string{
-						"namespace": ns,
-						"endpoint":  epName,
-						"ip":        addr.ip,
-						"port":      port.port,
-						"protocol":  port.protocol,
+					Labels: []RelationLabel{
+						{Name: "namespace", Value: ns},
+						{Name: "endpoint", Value: epName},
+						{Name: "ip", Value: addr.ip},
+						{Name: "port", Value: port.port},
+						{Name: "protocol", Value: port.protocol},
 					},
 				})
 			}
@@ -79,10 +80,10 @@ func (oc *ObjectsController) GetEpSvcRelation() []RelationMetric {
 
 				metrics = append(metrics, RelationMetric{
 					Name: relationEndpointService,
-					Dimension: map[string]string{
-						"namespace": ns,
-						"endpoint":  ep.name,
-						"service":   svc.name,
+					Labels: []RelationLabel{
+						{Name: "namespace", Value: ns},
+						{Name: "endpoint", Value: ep.name},
+						{Name: "service", Value: svc.name},
 					},
 				})
 				appendAddrMetrics(ns, ep.name, ep.addresses)
@@ -93,7 +94,41 @@ func (oc *ObjectsController) GetEpSvcRelation() []RelationMetric {
 	return metrics
 }
 
-func (oc *ObjectsController) GetReplicasetRelation() []RelationMetric {
+func (oc *ObjectsController) GetAddressPodRelations() []RelationMetric {
+	var metrics []RelationMetric
+	appendPodMetrics := func(ns string, pod Object, addr addressEntity) {
+		if pod.PodIP == addr.ip {
+			for _, port := range addr.ports {
+				metrics = append(metrics, RelationMetric{
+					Name: relationAddressPod,
+					Labels: []RelationLabel{
+						{Name: "namespace", Value: ns},
+						{Name: "pod", Value: pod.ID.Name},
+						{Name: "ip", Value: addr.ip},
+						{Name: "port", Value: port.port},
+						{Name: "protocol", Value: port.protocol},
+					},
+				})
+			}
+		}
+	}
+
+	for _, pod := range oc.podObjs.GetAll() {
+		eps, ok := oc.epsSvcObjs.endpoints[pod.ID.Namespace]
+		if !ok {
+			continue
+		}
+
+		for _, ep := range eps {
+			for _, addr := range ep.addresses {
+				appendPodMetrics(ep.namespace, pod, addr)
+			}
+		}
+	}
+	return metrics
+}
+
+func (oc *ObjectsController) GetReplicasetRelations() []RelationMetric {
 	var metrics []RelationMetric
 	for _, rs := range oc.replicaSetObjs.GetAll() {
 		ownerRef := LookupOnce(rs.ID, oc.replicaSetObjs, oc.objsMap())
@@ -101,24 +136,27 @@ func (oc *ObjectsController) GetReplicasetRelation() []RelationMetric {
 			continue
 		}
 
-		dims := map[string]string{
-			"replicaset": rs.ID.Name,
-			"namespace":  rs.ID.Namespace,
+		labels := []RelationLabel{
+			{Name: "namespace", Value: rs.ID.Namespace},
+			{Name: "replicaset", Value: rs.ID.Name},
 		}
 
 		switch ownerRef.Kind {
 		case kindDeployment:
-			dims["deployment"] = ownerRef.Name
+			labels = append(labels, RelationLabel{
+				Name:  "deployment",
+				Value: ownerRef.Name,
+			})
 			metrics = append(metrics, RelationMetric{
-				Name:      relationDeploymentReplicaset,
-				Dimension: dims,
+				Name:   relationDeploymentReplicaset,
+				Labels: labels,
 			})
 		}
 	}
 	return metrics
 }
 
-func (oc *ObjectsController) GetPodRelation() []RelationMetric {
+func (oc *ObjectsController) GetPodRelations() []RelationMetric {
 	var metrics []RelationMetric
 	for _, pod := range oc.podObjs.GetAll() {
 		ownerRef := LookupOnce(pod.ID, oc.podObjs, oc.objsMap())
@@ -128,44 +166,56 @@ func (oc *ObjectsController) GetPodRelation() []RelationMetric {
 
 		metrics = append(metrics, RelationMetric{
 			Name: relationNodePod,
-			Dimension: map[string]string{
-				"node":      pod.NodeName,
-				"pod":       pod.ID.Name,
-				"namespace": pod.ID.Namespace,
+			Labels: []RelationLabel{
+				{Name: "namespace", Value: pod.ID.Namespace},
+				{Name: "pod", Value: pod.ID.Name},
+				{Name: "node", Value: pod.NodeName},
 			},
 		})
 
-		dims := map[string]string{
-			"pod":       pod.ID.Name,
-			"namespace": pod.ID.Namespace,
+		labels := []RelationLabel{
+			{Name: "namespace", Value: pod.ID.Namespace},
+			{Name: "pod", Value: pod.ID.Name},
 		}
 		switch ownerRef.Kind {
 		case kindJob:
-			dims["job"] = ownerRef.Name
+			labels = append(labels, RelationLabel{
+				Name:  "job",
+				Value: ownerRef.Name,
+			})
 			metrics = append(metrics, RelationMetric{
-				Name:      relationJobPod,
-				Dimension: dims,
+				Name:   relationJobPod,
+				Labels: labels,
 			})
 
 		case kindReplicaSet:
-			dims["replicaset"] = ownerRef.Name
+			labels = append(labels, RelationLabel{
+				Name:  "replicaset",
+				Value: ownerRef.Name,
+			})
 			metrics = append(metrics, RelationMetric{
-				Name:      relationPodReplicaset,
-				Dimension: dims,
+				Name:   relationPodReplicaset,
+				Labels: labels,
 			})
 
 		case kindGameStatefulSet:
-			dims["statefulset"] = ownerRef.Name
+			labels = append(labels, RelationLabel{
+				Name:  "statefulset",
+				Value: ownerRef.Name,
+			})
 			metrics = append(metrics, RelationMetric{
-				Name:      relationPodStatefulset,
-				Dimension: dims,
+				Name:   relationPodStatefulset,
+				Labels: labels,
 			})
 
 		case kindDaemonSet:
-			dims["daemonset"] = ownerRef.Name
+			labels = append(labels, RelationLabel{
+				Name:  "daemonset",
+				Value: ownerRef.Name,
+			})
 			metrics = append(metrics, RelationMetric{
-				Name:      relationDaemonsetPod,
-				Dimension: dims,
+				Name:   relationDaemonsetPod,
+				Labels: labels,
 			})
 		}
 	}
@@ -180,14 +230,14 @@ func RelationToPromFormat(metrics []RelationMetric) []byte {
 		buf.WriteString(`{`)
 
 		var n int
-		for k, v := range metric.Dimension {
+		for _, label := range metric.Labels {
 			if n > 0 {
 				buf.WriteString(`,`)
 			}
 			n++
-			buf.WriteString(k)
+			buf.WriteString(label.Name)
 			buf.WriteString(`="`)
-			buf.WriteString(v)
+			buf.WriteString(label.Value)
 			buf.WriteString(`"`)
 		}
 
