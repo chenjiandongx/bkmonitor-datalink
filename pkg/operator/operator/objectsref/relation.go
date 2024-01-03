@@ -25,7 +25,7 @@ const (
 	relationDeploymentReplicaset = "deployment_with_replicaset_relation"
 
 	// TODO(mando): 待实现
-	relationEndpointPod            = "endpoint_with_pod_relation"
+	relationAddressEndpoint        = "address_with_endpoint_relation"
 	relationEndpointService        = "endpoint_with_service_relation"
 	relationIngressServiceRelation = "ingress_with_service_relation"
 )
@@ -46,6 +46,50 @@ func (oc *ObjectsController) GetNodeRelation() []RelationMetric {
 			},
 		})
 	}
+	return metrics
+}
+
+func (oc *ObjectsController) GetEpSvcRelation() []RelationMetric {
+	var metrics []RelationMetric
+	appendAddrMetrics := func(ns, epName string, addresses []addressEntity) {
+		for _, addr := range addresses {
+			for _, port := range addr.ports {
+				metrics = append(metrics, RelationMetric{
+					Name: relationAddressEndpoint,
+					Dimension: map[string]string{
+						"namespace": ns,
+						"endpoint":  epName,
+						"ip":        addr.ip,
+						"port":      port.port,
+						"protocol":  port.protocol,
+					},
+				})
+			}
+		}
+	}
+
+	for ns, svcs := range oc.epsSvcObjs.services {
+		for _, svc := range svcs {
+			eps := oc.epsSvcObjs.endpoints[ns]
+			for _, ep := range eps {
+				matched := matchLabels(svc.labels, ep.labels)
+				if !matched {
+					continue
+				}
+
+				metrics = append(metrics, RelationMetric{
+					Name: relationEndpointService,
+					Dimension: map[string]string{
+						"namespace": ns,
+						"endpoint":  ep.name,
+						"service":   svc.name,
+					},
+				})
+				appendAddrMetrics(ns, ep.name, ep.addresses)
+			}
+		}
+	}
+
 	return metrics
 }
 

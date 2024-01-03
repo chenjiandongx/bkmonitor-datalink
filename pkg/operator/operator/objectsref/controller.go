@@ -137,6 +137,8 @@ func NewObjects(kind string) *Objects {
 const (
 	kindNode            = "Node"
 	kindPod             = "Pod"
+	kindService         = "Service"
+	kindEndpoints       = "Endpoints"
 	kindDeployment      = "Deployment"
 	kindReplicaSet      = "ReplicaSet"
 	kindStatefulSet     = "StatefulSet"
@@ -148,8 +150,10 @@ const (
 )
 
 const (
-	resourceNodes = "nodes"
-	resourcePods  = "pods"
+	resourceNodes     = "nodes"
+	resourcePods      = "pods"
+	resourceServices  = "services"
+	resourceEndpoints = "endpoints"
 
 	// builtin workload
 	resourceReplicaSets  = "replicasets"
@@ -180,6 +184,7 @@ type ObjectsController struct {
 	gameStatefulSetObjs *Objects // tkex gameStatefulSetObjs 资源监听
 	gameDeploymentsObjs *Objects // tkex gameDeploymentsObjs 资源监听
 	nodeObjs            *NodeMap
+	epsSvcObjs          *EpsSvcMap
 
 	mm *metricMonitor
 }
@@ -239,6 +244,15 @@ func NewController(ctx context.Context, client kubernetes.Interface, tkexClient 
 	if err != nil {
 		return nil, err
 	}
+
+	epsSvcObjs := NewEpsSvcMap()
+	if err = newEndpointsObjects(ctx, sharedInformer, epsSvcObjs); err != nil {
+		return nil, err
+	}
+	if err = newServiceObjects(ctx, sharedInformer, epsSvcObjs); err != nil {
+		return nil, err
+	}
+	controller.epsSvcObjs = epsSvcObjs
 
 	tkexObjs, err := newTkexObjects(ctx, tkexClient, client.Discovery())
 	if err != nil {
@@ -349,6 +363,90 @@ func newPodObjects(ctx context.Context, sharedInformer informers.SharedInformerF
 		return nil, errors.New("failed to sync Pod caches")
 	}
 	return objs, nil
+}
+
+func newServiceObjects(ctx context.Context, sharedInformer informers.SharedInformerFactory, objs *EpsSvcMap) error {
+	genericInformer, err := sharedInformer.ForResource(corev1.SchemeGroupVersion.WithResource(resourceServices))
+	if err != nil {
+		return err
+	}
+
+	informer := genericInformer.Informer()
+	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			service, ok := obj.(*corev1.Service)
+			if !ok {
+				logger.Errorf("excepted Service type, got %T", obj)
+				return
+			}
+			objs.UpsertService(service)
+		},
+		UpdateFunc: func(_, newObj interface{}) {
+			service, ok := newObj.(*corev1.Service)
+			if !ok {
+				logger.Errorf("excepted Service type, got %T", newObj)
+				return
+			}
+			objs.UpsertService(service)
+		},
+		DeleteFunc: func(obj interface{}) {
+			service, ok := obj.(*corev1.Service)
+			if !ok {
+				logger.Errorf("excepted Service type, got %T", obj)
+				return
+			}
+			objs.DeleteService(service)
+		},
+	})
+	go informer.Run(ctx.Done())
+
+	synced := k8sutils.WaitForNamedCacheSync(ctx, kindService, informer)
+	if !synced {
+		return errors.New("failed to sync Service caches")
+	}
+	return nil
+}
+
+func newEndpointsObjects(ctx context.Context, sharedInformer informers.SharedInformerFactory, objs *EpsSvcMap) error {
+	genericInformer, err := sharedInformer.ForResource(corev1.SchemeGroupVersion.WithResource(resourceEndpoints))
+	if err != nil {
+		return err
+	}
+
+	informer := genericInformer.Informer()
+	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			endpoints, ok := obj.(*corev1.Endpoints)
+			if !ok {
+				logger.Errorf("excepted Endpoints type, got %T", obj)
+				return
+			}
+			objs.UpsertEndpoints(endpoints)
+		},
+		UpdateFunc: func(_, newObj interface{}) {
+			endpoints, ok := newObj.(*corev1.Endpoints)
+			if !ok {
+				logger.Errorf("excepted Endpoints type, got %T", newObj)
+				return
+			}
+			objs.UpsertEndpoints(endpoints)
+		},
+		DeleteFunc: func(obj interface{}) {
+			endpoints, ok := obj.(*corev1.Endpoints)
+			if !ok {
+				logger.Errorf("excepted Endpoints type, got %T", obj)
+				return
+			}
+			objs.DeleteEndpoints(endpoints)
+		},
+	})
+	go informer.Run(ctx.Done())
+
+	synced := k8sutils.WaitForNamedCacheSync(ctx, kindEndpoints, informer)
+	if !synced {
+		return errors.New("failed to sync Endpoints caches")
+	}
+	return nil
 }
 
 func newReplicaSetObjects(ctx context.Context, sharedInformer informers.SharedInformerFactory) (*Objects, error) {
