@@ -11,6 +11,8 @@ package objectsref
 
 import (
 	"bytes"
+
+	"github.com/TencentBlueKing/bkmonitor-datalink/pkg/utils/logger"
 )
 
 const (
@@ -51,13 +53,13 @@ func (oc *ObjectsController) GetNodeRelations() []RelationMetric {
 
 func (oc *ObjectsController) GetEpSvcRelations() []RelationMetric {
 	var metrics []RelationMetric
-	appendAddrMetrics := func(ns, svc string, addresses []addressEntity) {
+	appendAddrMetrics := func(namespace, svc string, addresses []addressEntity) {
 		for _, addr := range addresses {
 			for _, port := range addr.ports {
 				metrics = append(metrics, RelationMetric{
 					Name: relationAddressService,
 					Labels: []RelationLabel{
-						{Name: "namespace", Value: ns},
+						{Name: "namespace", Value: namespace},
 						{Name: "service", Value: svc},
 						{Name: "ip", Value: addr.ip},
 						{Name: "port", Value: port.port},
@@ -68,19 +70,18 @@ func (oc *ObjectsController) GetEpSvcRelations() []RelationMetric {
 		}
 	}
 
-	for ns, svcs := range oc.epsSvcObjs.services {
-		for _, svc := range svcs {
-			eps := oc.epsSvcObjs.endpoints[ns]
+	oc.epsSvcObjs.rangeServices(func(namespace string, services serviceEntities) {
+		for _, svc := range services {
+			eps := oc.epsSvcObjs.endpoints[namespace]
 			for _, ep := range eps {
 				matched := matchLabels(svc.labels, ep.labels)
 				if !matched {
 					continue
 				}
-
-				appendAddrMetrics(ns, svc.name, ep.addresses)
+				appendAddrMetrics(namespace, svc.name, ep.addresses)
 			}
 		}
-	}
+	})
 
 	return metrics
 }
@@ -109,11 +110,13 @@ func (oc *ObjectsController) GetAddressPodRelations() []RelationMetric {
 
 	var metrics []RelationMetric
 	for _, item := range lst {
+		logger.Errorf("mando:item: %+v", item)
 		// endpoints <-> service 需要 namespace/name 保持对齐
 		ep, ok := oc.epsSvcObjs.getEndpoints(item.namespace, item.name)
 		if !ok {
 			continue
 		}
+		logger.Errorf("mando:ep: %+v", ep)
 
 		for _, addr := range ep.addresses {
 			for pod, ip := range item.pods {
