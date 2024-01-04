@@ -89,20 +89,19 @@ func (oc *ObjectsController) GetAddressPodRelations() []RelationMetric {
 	type svcPods struct {
 		namespace string
 		name      string
-		svc       string
-		pod2ip    map[string]string //map[podname]podip
+		pods      map[string]string //map[podname]podip
 	}
 
 	var lst []svcPods
 	oc.epsSvcObjs.rangeServices(func(namespace string, services serviceEntities) {
 		pods := oc.podObjs.GetByNamespace(namespace)
 		for _, svc := range services {
-			item := svcPods{namespace: namespace, svc: svc.name, pod2ip: map[string]string{}}
+			item := svcPods{namespace: namespace, name: svc.name, pods: map[string]string{}}
 			for _, pod := range pods {
 				if !matchLabels(svc.labels, pod.Labels) {
 					continue
 				}
-				item.pod2ip[pod.ID.Name] = pod.PodIP
+				item.pods[pod.ID.Name] = pod.PodIP
 			}
 			lst = append(lst, item)
 		}
@@ -111,13 +110,13 @@ func (oc *ObjectsController) GetAddressPodRelations() []RelationMetric {
 	var metrics []RelationMetric
 	for _, item := range lst {
 		// endpoints <-> service 需要 namespace/name 保持对齐
-		ep, ok := oc.epsSvcObjs.getEndpoints(item.namespace, item.svc)
+		ep, ok := oc.epsSvcObjs.getEndpoints(item.namespace, item.name)
 		if !ok {
 			continue
 		}
 
 		for _, addr := range ep.addresses {
-			for pod, ip := range item.pod2ip {
+			for pod, ip := range item.pods {
 				if addr.ip != ip {
 					continue
 				}
