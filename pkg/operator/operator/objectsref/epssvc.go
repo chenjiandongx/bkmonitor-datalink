@@ -30,14 +30,13 @@ type endpointsEntity struct {
 	name      string
 	namespace string
 	addresses []addressEntity
-	labels    map[string]string
 }
 
 type endpointsEntities map[string]endpointsEntity
 
 type serviceEntity struct {
-	name   string
-	labels map[string]string
+	name     string
+	selector map[string]string
 }
 
 type serviceEntities map[string]serviceEntity
@@ -89,7 +88,6 @@ func (m *EpsSvcMap) UpsertEndpoints(endpoints *corev1.Endpoints) {
 		name:      endpoints.Name,
 		namespace: endpoints.Namespace,
 		addresses: addressEntities,
-		labels:    endpoints.Labels,
 	}
 }
 
@@ -111,8 +109,8 @@ func (m *EpsSvcMap) UpsertService(service *corev1.Service) {
 	}
 
 	m.services[service.Namespace][service.Name] = serviceEntity{
-		name:   service.Name,
-		labels: service.Labels,
+		name:     service.Name,
+		selector: service.Spec.Selector,
 	}
 }
 
@@ -134,17 +132,15 @@ func (m *EpsSvcMap) rangeServices(visitFunc func(namespace string, services serv
 	}
 }
 
-func (m *EpsSvcMap) getEndpoints(namespace, name string) (endpointsEntity, bool) {
+func (m *EpsSvcMap) getEndpoints(namespace, name string) endpointsEntity {
 	m.mut.Lock()
 	defer m.mut.Unlock()
 
 	eps, ok := m.endpoints[namespace]
 	if !ok {
-		return endpointsEntity{}, false
+		return endpointsEntity{}
 	}
-
-	ep, ok := eps[name]
-	return ep, ok
+	return eps[name]
 }
 
 func matchLabels(subset, set map[string]string) bool {
