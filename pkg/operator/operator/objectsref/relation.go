@@ -21,8 +21,7 @@ const (
 	relationPodStatefulset       = "pod_with_statefulset_relation"
 	relationDaemonsetPod         = "daemonset_with_pod_relation"
 	relationDeploymentReplicaset = "deployment_with_replicaset_relation"
-	relationAddressEndpoint      = "address_with_endpoint_relation"
-	relationEndpointService      = "endpoint_with_service_relation"
+	relationAddressService       = "address_with_service_relation"
 	relationAddressPod           = "address_with_pod_relation"
 )
 
@@ -52,14 +51,14 @@ func (oc *ObjectsController) GetNodeRelations() []RelationMetric {
 
 func (oc *ObjectsController) GetEpSvcRelations() []RelationMetric {
 	var metrics []RelationMetric
-	appendAddrMetrics := func(ns, epName string, addresses []addressEntity) {
+	appendAddrMetrics := func(ns, svc string, addresses []addressEntity) {
 		for _, addr := range addresses {
 			for _, port := range addr.ports {
 				metrics = append(metrics, RelationMetric{
-					Name: relationAddressEndpoint,
+					Name: relationAddressService,
 					Labels: []RelationLabel{
 						{Name: "namespace", Value: ns},
-						{Name: "endpoint", Value: epName},
+						{Name: "service", Value: svc},
 						{Name: "ip", Value: addr.ip},
 						{Name: "port", Value: port.port},
 						{Name: "protocol", Value: port.protocol},
@@ -78,15 +77,7 @@ func (oc *ObjectsController) GetEpSvcRelations() []RelationMetric {
 					continue
 				}
 
-				metrics = append(metrics, RelationMetric{
-					Name: relationEndpointService,
-					Labels: []RelationLabel{
-						{Name: "namespace", Value: ns},
-						{Name: "endpoint", Value: ep.name},
-						{Name: "service", Value: svc.name},
-					},
-				})
-				appendAddrMetrics(ns, ep.name, ep.addresses)
+				appendAddrMetrics(ns, svc.name, ep.addresses)
 			}
 		}
 	}
@@ -95,36 +86,58 @@ func (oc *ObjectsController) GetEpSvcRelations() []RelationMetric {
 }
 
 func (oc *ObjectsController) GetAddressPodRelations() []RelationMetric {
-	var metrics []RelationMetric
-	appendPodMetrics := func(ns string, pod Object, addr addressEntity) {
-		if pod.PodIP == addr.ip {
-			for _, port := range addr.ports {
-				metrics = append(metrics, RelationMetric{
-					Name: relationAddressPod,
-					Labels: []RelationLabel{
-						{Name: "namespace", Value: ns},
-						{Name: "pod", Value: pod.ID.Name},
-						{Name: "ip", Value: addr.ip},
-						{Name: "port", Value: port.port},
-						{Name: "protocol", Value: port.protocol},
-					},
-				})
-			}
-		}
+	type svcPods struct {
+		namespace string
+		name      string
+		svc       string
+		pod2ip    map[string]string //map[podname]podip
 	}
 
-	for _, pod := range oc.podObjs.GetAll() {
-		eps, ok := oc.epsSvcObjs.endpoints[pod.ID.Namespace]
+	var lst []svcPods
+	oc.epsSvcObjs.rangeServices(func(namespace string, services serviceEntities) {
+		pods := oc.podObjs.GetByNamespace(namespace)
+		for _, svc := range services {
+			item := svcPods{namespace: namespace, svc: svc.name, pod2ip: map[string]string{}}
+			for _, pod := range pods {
+				if !matchLabels(svc.labels, pod.Labels) {
+					continue
+				}
+				item.pod2ip[pod.ID.Name] = pod.PodIP
+			}
+			lst = append(lst, item)
+		}
+	})
+
+	var metrics []RelationMetric
+	for _, item := range lst {
+		// endpoints <-> service 需要 namespace/name 保持对齐
+		ep, ok := oc.epsSvcObjs.getEndpoints(item.namespace, item.svc)
 		if !ok {
 			continue
 		}
 
-		for _, ep := range eps {
-			for _, addr := range ep.addresses {
-				appendPodMetrics(ep.namespace, pod, addr)
+		for _, addr := range ep.addresses {
+			for pod, ip := range item.pod2ip {
+				if addr.ip != ip {
+					continue
+				}
+
+				for _, port := range addr.ports {
+					metrics = append(metrics, RelationMetric{
+						Name: relationAddressPod,
+						Labels: []RelationLabel{
+							{Name: "namespace", Value: item.namespace},
+							{Name: "pod", Value: pod},
+							{Name: "ip", Value: addr.ip},
+							{Name: "port", Value: port.port},
+							{Name: "protocol", Value: port.protocol},
+						},
+					})
+				}
 			}
 		}
 	}
+
 	return metrics
 }
 

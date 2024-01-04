@@ -42,8 +42,11 @@ type OwnerRef struct {
 type Object struct {
 	ID        ObjectID
 	OwnerRefs []OwnerRef
-	NodeName  string
-	PodIP     string
+
+	// Pod 属性
+	NodeName string
+	PodIP    string
+	Labels   map[string]string
 }
 
 // ObjectID 代表 workload 对象标识
@@ -98,6 +101,19 @@ func (o *Objects) GetByNodeName(nodeName string) []Object {
 	var ret []Object
 	for _, obj := range o.objs {
 		if obj.NodeName == nodeName {
+			ret = append(ret, obj)
+		}
+	}
+	return ret
+}
+
+func (o *Objects) GetByNamespace(namespace string) []Object {
+	o.mut.Lock()
+	defer o.mut.Unlock()
+
+	var ret []Object
+	for _, obj := range o.objs {
+		if obj.ID.Namespace == namespace {
 			ret = append(ret, obj)
 		}
 	}
@@ -328,6 +344,7 @@ func newPodObjects(ctx context.Context, sharedInformer informers.SharedInformerF
 				},
 				OwnerRefs: toRefs(pod.OwnerReferences),
 				NodeName:  pod.Spec.NodeName,
+				Labels:    pod.Labels,
 				PodIP:     pod.Status.PodIP,
 			})
 		},
@@ -344,6 +361,7 @@ func newPodObjects(ctx context.Context, sharedInformer informers.SharedInformerF
 				},
 				OwnerRefs: toRefs(pod.OwnerReferences),
 				NodeName:  pod.Spec.NodeName,
+				Labels:    pod.Labels,
 				PodIP:     pod.Status.PodIP,
 			})
 		},

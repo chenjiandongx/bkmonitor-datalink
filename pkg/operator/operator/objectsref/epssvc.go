@@ -125,6 +125,28 @@ func (m *EpsSvcMap) DeleteService(service *corev1.Service) {
 	}
 }
 
+func (m *EpsSvcMap) rangeServices(visitFunc func(namespace string, services serviceEntities)) {
+	m.mut.Lock()
+	defer m.mut.Unlock()
+
+	for k, v := range m.services {
+		visitFunc(k, v)
+	}
+}
+
+func (m *EpsSvcMap) getEndpoints(namespace, name string) (endpointsEntity, bool) {
+	m.mut.Lock()
+	defer m.mut.Unlock()
+
+	eps, ok := m.endpoints[namespace]
+	if !ok {
+		return endpointsEntity{}, false
+	}
+
+	ep, ok := eps[name]
+	return ep, ok
+}
+
 func matchLabels(subset, set map[string]string) bool {
 	for k, v := range subset {
 		val, ok := set[k]
