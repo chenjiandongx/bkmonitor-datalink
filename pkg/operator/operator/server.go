@@ -489,8 +489,7 @@ func (c *Operator) WorkloadNodeRoute(w http.ResponseWriter, r *http.Request) {
 func (c *Operator) RelationMetricsRoute(w http.ResponseWriter, _ *http.Request) {
 	var lines []byte
 	lines = append(lines, objectsref.RelationToPromFormat(c.objectsController.GetNodeRelations())...)
-	lines = append(lines, objectsref.RelationToPromFormat(c.objectsController.GetEpSvcRelations())...)
-	lines = append(lines, objectsref.RelationToPromFormat(c.objectsController.GetAddressPodRelations())...)
+	lines = append(lines, objectsref.RelationToPromFormat(c.objectsController.GetServieRelations())...)
 	lines = append(lines, objectsref.RelationToPromFormat(c.objectsController.GetPodRelations())...)
 	lines = append(lines, objectsref.RelationToPromFormat(c.objectsController.GetReplicasetRelations())...)
 

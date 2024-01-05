@@ -25,9 +25,9 @@ const (
 	relationDeploymentReplicaset = "deployment_with_replicaset_relation"
 
 	relationPodService     = "pod_with_service_relation"
-	relationIngressService = "ingress_with_service_relation"
 	relationAddressService = "address_with_service_relation"
 	relationDomainService  = "domain_with_service_relation"
+	relationIngressService = "ingress_with_service_relation"
 )
 
 type RelationMetric struct {
