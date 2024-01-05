@@ -201,7 +201,8 @@ type ObjectsController struct {
 	gameStatefulSetObjs *Objects // tkex gameStatefulSetObjs 资源监听
 	gameDeploymentsObjs *Objects // tkex gameDeploymentsObjs 资源监听
 	nodeObjs            *NodeMap
-	epsSvcObjs          *EpsSvcMap
+	serviceObjs         *ServiceMap
+	endpointsObjs       *EndpointsMap
 
 	mm *metricMonitor
 }
@@ -262,14 +263,15 @@ func NewController(ctx context.Context, client kubernetes.Interface, tkexClient 
 		return nil, err
 	}
 
-	epsSvcObjs := NewEpsSvcMap()
-	if err = newEndpointsObjects(ctx, sharedInformer, epsSvcObjs); err != nil {
+	controller.serviceObjs, err = newServiceObjects(ctx, sharedInformer)
+	if err != nil {
 		return nil, err
 	}
-	if err = newServiceObjects(ctx, sharedInformer, epsSvcObjs); err != nil {
+
+	controller.endpointsObjs, err = newEndpointsObjects(ctx, sharedInformer)
+	if err != nil {
 		return nil, err
 	}
-	controller.epsSvcObjs = epsSvcObjs
 
 	tkexObjs, err := newTkexObjects(ctx, tkexClient, client.Discovery())
 	if err != nil {
@@ -386,10 +388,12 @@ func newPodObjects(ctx context.Context, sharedInformer informers.SharedInformerF
 	return objs, nil
 }
 
-func newServiceObjects(ctx context.Context, sharedInformer informers.SharedInformerFactory, objs *EpsSvcMap) error {
+func newServiceObjects(ctx context.Context, sharedInformer informers.SharedInformerFactory) (*ServiceMap, error) {
+	objs := NewServiceMap()
+
 	genericInformer, err := sharedInformer.ForResource(corev1.SchemeGroupVersion.WithResource(resourceServices))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	informer := genericInformer.Informer()
@@ -423,15 +427,17 @@ func newServiceObjects(ctx context.Context, sharedInformer informers.SharedInfor
 
 	synced := k8sutils.WaitForNamedCacheSync(ctx, kindService, informer)
 	if !synced {
-		return errors.New("failed to sync Service caches")
+		return nil, errors.New("failed to sync Service caches")
 	}
-	return nil
+	return objs, nil
 }
 
-func newEndpointsObjects(ctx context.Context, sharedInformer informers.SharedInformerFactory, objs *EpsSvcMap) error {
+func newEndpointsObjects(ctx context.Context, sharedInformer informers.SharedInformerFactory) (*EndpointsMap, error) {
+	objs := NewEndpointsMap()
+
 	genericInformer, err := sharedInformer.ForResource(corev1.SchemeGroupVersion.WithResource(resourceEndpoints))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	informer := genericInformer.Informer()
@@ -465,9 +471,9 @@ func newEndpointsObjects(ctx context.Context, sharedInformer informers.SharedInf
 
 	synced := k8sutils.WaitForNamedCacheSync(ctx, kindEndpoints, informer)
 	if !synced {
-		return errors.New("failed to sync Endpoints caches")
+		return nil, errors.New("failed to sync Endpoints caches")
 	}
-	return nil
+	return objs, nil
 }
 
 func newReplicaSetObjects(ctx context.Context, sharedInformer informers.SharedInformerFactory) (*Objects, error) {

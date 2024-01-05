@@ -11,6 +11,8 @@ package objectsref
 
 import (
 	"bytes"
+
+	corev1 "k8s.io/api/core/v1"
 )
 
 const (
@@ -21,8 +23,11 @@ const (
 	relationPodStatefulset       = "pod_with_statefulset_relation"
 	relationDaemonsetPod         = "daemonset_with_pod_relation"
 	relationDeploymentReplicaset = "deployment_with_replicaset_relation"
-	relationAddressService       = "address_with_service_relation"
-	relationAddressPod           = "address_with_pod_relation"
+
+	relationPodService     = "pod_with_service_relation"
+	relationIngressService = "ingress_with_service_relation"
+	relationAddressService = "address_with_service_relation"
+	relationDomainService  = "domain_with_service_relation"
 )
 
 type RelationMetric struct {
@@ -49,87 +54,77 @@ func (oc *ObjectsController) GetNodeRelations() []RelationMetric {
 	return metrics
 }
 
-func (oc *ObjectsController) GetEpSvcRelations() []RelationMetric {
+func (oc *ObjectsController) GetServieRelations() []RelationMetric {
 	var metrics []RelationMetric
-	appendAddrMetrics := func(namespace, svc string, addresses []addressEntity) {
-		for _, addr := range addresses {
-			for _, port := range addr.ports {
+	oc.serviceObjs.rangeServices(func(namespace string, services serviceEntities) {
+		for _, svc := range services {
+			if len(svc.selector) > 0 {
+				pods := oc.podObjs.GetByNamespace(namespace)
+				for _, pod := range pods {
+					if !matchLabels(svc.selector, pod.Labels) {
+						continue
+					}
+					metrics = append(metrics, RelationMetric{
+						Name: relationPodService,
+						Labels: []RelationLabel{
+							{Name: "namespace", Value: namespace},
+							{Name: "service", Value: svc.name},
+							{Name: "pod", Value: pod.ID.Name},
+						},
+					})
+				}
+			}
+
+			for _, addr := range svc.externalIPs {
 				metrics = append(metrics, RelationMetric{
 					Name: relationAddressService,
 					Labels: []RelationLabel{
-						{Name: "namespace", Value: namespace},
-						{Name: "service", Value: svc},
-						{Name: "ip", Value: addr.ip},
-						{Name: "port", Value: port.port},
-						{Name: "protocol", Value: port.protocol},
+						{Name: "namespace", Value: svc.namespace},
+						{Name: "service", Value: svc.name},
+						{Name: "address", Value: addr},
 					},
 				})
 			}
-		}
-	}
 
-	oc.epsSvcObjs.rangeServices(func(namespace string, services serviceEntities) {
-		for _, svc := range services {
-			eps := oc.epsSvcObjs.endpoints[namespace]
-			for _, ep := range eps {
-				if ep.name != svc.name {
-					continue
-				}
-				appendAddrMetrics(namespace, svc.name, ep.addresses)
-			}
-		}
-	})
-
-	return metrics
-}
-
-func (oc *ObjectsController) GetAddressPodRelations() []RelationMetric {
-	type svcPods struct {
-		namespace string
-		name      string
-		pods      map[string]string //map[podname]podip
-	}
-
-	var lst []svcPods
-	oc.epsSvcObjs.rangeServices(func(namespace string, services serviceEntities) {
-		pods := oc.podObjs.GetByNamespace(namespace)
-		for _, svc := range services {
-			item := svcPods{namespace: namespace, name: svc.name, pods: map[string]string{}}
-			for _, pod := range pods {
-				if !matchLabels(svc.selector, pod.Labels) {
-					continue
-				}
-				item.pods[pod.ID.Name] = pod.PodIP
-			}
-			lst = append(lst, item)
-		}
-	})
-
-	var metrics []RelationMetric
-	for _, item := range lst {
-		// endpoints <-> service 需要 namespace/name 保持对齐
-		eps := oc.epsSvcObjs.getEndpoints(item.namespace, item.name)
-		for _, addr := range eps.addresses {
-			for pod, ip := range item.pods {
-				if addr.ip != ip {
-					continue
-				}
-
-				for _, port := range addr.ports {
+			switch svc.kind {
+			case string(corev1.ServiceTypeExternalName):
+				eps, ok := oc.endpointsObjs.getEndpoints(svc.namespace, svc.name)
+				if !ok {
 					metrics = append(metrics, RelationMetric{
-						Name: relationAddressPod,
+						Name: relationDomainService,
 						Labels: []RelationLabel{
-							{Name: "namespace", Value: item.namespace},
-							{Name: "pod", Value: pod},
-							{Name: "ip", Value: addr.ip},
-							{Name: "port", Value: port.port},
-							{Name: "protocol", Value: port.protocol},
+							{Name: "namespace", Value: svc.namespace},
+							{Name: "service", Value: svc.name},
+							{Name: "domain", Value: svc.externalName},
+						},
+					})
+				} else {
+					for _, addr := range eps.address {
+						metrics = append(metrics, RelationMetric{
+							Name: relationAddressService,
+							Labels: []RelationLabel{
+								{Name: "namespace", Value: svc.namespace},
+								{Name: "service", Value: svc.name},
+								{Name: "address", Value: addr},
+							},
+						})
+					}
+				}
+
+			case string(corev1.ServiceTypeLoadBalancer):
+				for _, addr := range svc.loadBalancerIPs {
+					metrics = append(metrics, RelationMetric{
+						Name: relationAddressService,
+						Labels: []RelationLabel{
+							{Name: "namespace", Value: svc.namespace},
+							{Name: "service", Value: svc.name},
+							{Name: "address", Value: addr},
 						},
 					})
 				}
 			}
 		}
-	}
+	})
 
 	return metrics
 }
