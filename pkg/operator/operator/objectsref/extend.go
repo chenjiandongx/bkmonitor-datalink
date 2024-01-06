@@ -82,14 +82,13 @@ type tkexObjects struct {
 	gamedeployment  *Objects
 }
 
-func newTkexObjects(ctx context.Context, client tkexversiond.Interface, discoveryClient discovery.DiscoveryInterface) (*tkexObjects, error) {
+func newTkexObjects(ctx context.Context, client tkexversiond.Interface, resources map[string]GVRK) (*tkexObjects, error) {
 	sharedInformer := tkexinformers.NewSharedInformerFactoryWithOptions(client, define.ReSyncPeriod, tkexinformers.WithNamespace(metav1.NamespaceAll))
 
 	var err error
 	tkexObjs := &tkexObjects{}
-	gvrks := listServerPreferredResources(discoveryClient)
 
-	if _, ok := gvrks[GameStatefulSetGVRK.ID()]; ok {
+	if _, ok := resources[GameStatefulSetGVRK.ID()]; ok {
 		logger.Infof("found extend workload: %s", GameStatefulSetGVRK.ID())
 		tkexObjs.gamestatefulset, err = newGameStatefulObjects(ctx, sharedInformer)
 		if err != nil {
@@ -97,7 +96,7 @@ func newTkexObjects(ctx context.Context, client tkexversiond.Interface, discover
 		}
 	}
 
-	if _, ok := gvrks[GameDeploymentGVRK.ID()]; ok {
+	if _, ok := resources[GameDeploymentGVRK.ID()]; ok {
 		logger.Infof("found extend workload: %s", GameDeploymentGVRK.ID())
 		tkexObjs.gamedeployment, err = newGameDeploymentObjects(ctx, sharedInformer)
 		if err != nil {

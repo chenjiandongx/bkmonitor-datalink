@@ -193,7 +193,10 @@ type ObjectsController struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	client              kubernetes.Interface
+	resources map[string]GVRK
+	client    kubernetes.Interface
+	mm        *metricMonitor
+
 	podObjs             *Objects
 	replicaSetObjs      *Objects
 	deploymentObjs      *Objects
@@ -201,14 +204,12 @@ type ObjectsController struct {
 	statefulSetObjs     *Objects
 	jobObjs             *Objects
 	cronJobObjs         *Objects
-	gameStatefulSetObjs *Objects // tkex gameStatefulSetObjs 资源监听
-	gameDeploymentsObjs *Objects // tkex gameDeploymentsObjs 资源监听
+	gameStatefulSetObjs *Objects
+	gameDeploymentsObjs *Objects
 	nodeObjs            *NodeMap
 	serviceObjs         *ServiceMap
 	endpointsObjs       *EndpointsMap
 	ingressObjs         *IngressMap
-
-	mm *metricMonitor
 }
 
 func NewController(ctx context.Context, client kubernetes.Interface, tkexClient tkexversiond.Interface) (*ObjectsController, error) {
@@ -225,6 +226,9 @@ func NewController(ctx context.Context, client kubernetes.Interface, tkexClient 
 	}
 	KubernetesServerVersion = version.String()
 	setClusterVersion(KubernetesServerVersion)
+
+	resources := listServerPreferredResources(client.Discovery())
+	controller.resources = resources
 
 	sharedInformer := informers.NewSharedInformerFactoryWithOptions(client, define.ReSyncPeriod, informers.WithNamespace(metav1.NamespaceAll))
 	controller.podObjs, err = newPodObjects(ctx, sharedInformer)
@@ -257,7 +261,7 @@ func NewController(ctx context.Context, client kubernetes.Interface, tkexClient 
 		return nil, err
 	}
 
-	controller.cronJobObjs, err = newCronJobObjects(ctx, sharedInformer)
+	controller.cronJobObjs, err = newCronJobObjects(ctx, sharedInformer, resources)
 	if err != nil {
 		return nil, err
 	}
@@ -277,12 +281,12 @@ func NewController(ctx context.Context, client kubernetes.Interface, tkexClient 
 		return nil, err
 	}
 
-	controller.ingressObjs, err = newIngressObjects(ctx, sharedInformer)
+	controller.ingressObjs, err = newIngressObjects(ctx, sharedInformer, resources)
 	if err != nil {
 		return nil, err
 	}
 
-	tkexObjs, err := newTkexObjects(ctx, tkexClient, client.Discovery())
+	tkexObjs, err := newTkexObjects(ctx, tkexClient, resources)
 	if err != nil {
 		return nil, err
 	}
@@ -485,10 +489,17 @@ func newEndpointsObjects(ctx context.Context, sharedInformer informers.SharedInf
 	return objs, nil
 }
 
-func newIngressObjects(ctx context.Context, sharedInformer informers.SharedInformerFactory) (*IngressMap, error) {
-	objs, err := newIngressV1Objects(ctx, sharedInformer)
-	if err == nil {
-		return objs, nil
+func newIngressObjects(ctx context.Context, sharedInformer informers.SharedInformerFactory, resources map[string]GVRK) (*IngressMap, error) {
+	gvrk := GVRK{
+		Group:    "networking.k8s.io",
+		Version:  "v1",
+		Resource: "ingresses",
+		Kind:     "Ingress",
+	}
+
+	_, ok := resources[gvrk.ID()]
+	if ok {
+		return newIngressV1Objects(ctx, sharedInformer)
 	}
 
 	return newIngressV1BetaObjects(ctx, sharedInformer)
@@ -923,10 +934,17 @@ func newJobObjects(ctx context.Context, sharedInformer informers.SharedInformerF
 	return objs, nil
 }
 
-func newCronJobObjects(ctx context.Context, sharedInformer informers.SharedInformerFactory) (*Objects, error) {
-	objs, err := newCronJobV1Objects(ctx, sharedInformer)
-	if err == nil {
-		return objs, nil
+func newCronJobObjects(ctx context.Context, sharedInformer informers.SharedInformerFactory, resources map[string]GVRK) (*Objects, error) {
+	gvrk := GVRK{
+		Group:    "batch",
+		Version:  "v1",
+		Resource: "cronjobs",
+		Kind:     "CronJob",
+	}
+
+	_, ok := resources[gvrk.ID()]
+	if ok {
+		return newCronJobV1Objects(ctx, sharedInformer)
 	}
 
 	return newCronJobV1BetaObjects(ctx, sharedInformer)
