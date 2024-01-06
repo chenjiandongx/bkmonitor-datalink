@@ -18,7 +18,7 @@ import (
 type endpointsEntity struct {
 	name      string
 	namespace string
-	address   []string
+	addresses []string
 }
 
 type endpointsEntities map[string]endpointsEntity
@@ -42,28 +42,25 @@ func (m *EndpointsMap) UpsertEndpoints(endpoints *corev1.Endpoints) {
 		m.endpoints[endpoints.Namespace] = make(endpointsEntities)
 	}
 
-	mergeAddress := func(subsets []corev1.EndpointSubset) []string {
-		set := make(map[string]struct{})
-		for _, subset := range subsets {
-			for _, addr := range subset.Addresses {
-				set[addr.IP] = struct{}{}
-			}
-			for _, addr := range subset.NotReadyAddresses {
-				set[addr.IP] = struct{}{}
-			}
+	set := make(map[string]struct{})
+	for _, subset := range endpoints.Subsets {
+		for _, addr := range subset.Addresses {
+			set[addr.IP] = struct{}{}
 		}
+		for _, addr := range subset.NotReadyAddresses {
+			set[addr.IP] = struct{}{}
+		}
+	}
 
-		dst := make([]string, 0, len(set))
-		for k := range set {
-			dst = append(dst, k)
-		}
-		return dst
+	addresses := make([]string, 0, len(set))
+	for k := range set {
+		addresses = append(addresses, k)
 	}
 
 	m.endpoints[endpoints.Namespace][endpoints.Name] = endpointsEntity{
 		name:      endpoints.Name,
 		namespace: endpoints.Namespace,
-		address:   mergeAddress(endpoints.Subsets),
+		addresses: addresses,
 	}
 }
 

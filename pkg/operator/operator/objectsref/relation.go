@@ -86,6 +86,22 @@ func (oc *ObjectsController) GetServieRelations() []RelationMetric {
 				})
 			}
 
+			oc.ingressObjs.rangeIngressByNamespace(namespace, func(name string, ingress ingressEntity) {
+				for _, s := range ingress.services {
+					if s != svc.name {
+						continue
+					}
+					metrics = append(metrics, RelationMetric{
+						Name: relationIngressService,
+						Labels: []RelationLabel{
+							{Name: "namespace", Value: svc.namespace},
+							{Name: "service", Value: svc.name},
+							{Name: "ingress", Value: name},
+						},
+					})
+				}
+			})
+
 			switch svc.kind {
 			case string(corev1.ServiceTypeExternalName):
 				eps, ok := oc.endpointsObjs.getEndpoints(svc.namespace, svc.name)
@@ -99,7 +115,7 @@ func (oc *ObjectsController) GetServieRelations() []RelationMetric {
 						},
 					})
 				} else {
-					for _, addr := range eps.address {
+					for _, addr := range eps.addresses {
 						metrics = append(metrics, RelationMetric{
 							Name: relationAddressService,
 							Labels: []RelationLabel{
