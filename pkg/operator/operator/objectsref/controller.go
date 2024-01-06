@@ -193,9 +193,8 @@ type ObjectsController struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	resources map[string]GVRK
-	client    kubernetes.Interface
-	mm        *metricMonitor
+	client kubernetes.Interface
+	mm     *metricMonitor
 
 	podObjs             *Objects
 	replicaSetObjs      *Objects
@@ -228,7 +227,6 @@ func NewController(ctx context.Context, client kubernetes.Interface, tkexClient 
 	setClusterVersion(KubernetesServerVersion)
 
 	resources := listServerPreferredResources(client.Discovery())
-	controller.resources = resources
 
 	sharedInformer := informers.NewSharedInformerFactoryWithOptions(client, define.ReSyncPeriod, informers.WithNamespace(metav1.NamespaceAll))
 	controller.podObjs, err = newPodObjects(ctx, sharedInformer)
