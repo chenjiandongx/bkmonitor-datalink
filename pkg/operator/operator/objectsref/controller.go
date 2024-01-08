@@ -487,7 +487,7 @@ func newEndpointsObjects(ctx context.Context, sharedInformer informers.SharedInf
 	return objs, nil
 }
 
-func newIngressObjects(ctx context.Context, sharedInformer informers.SharedInformerFactory, resources map[string]GVRK) (*IngressMap, error) {
+func newIngressObjects(ctx context.Context, sharedInformer informers.SharedInformerFactory, resources map[GVRK]struct{}) (*IngressMap, error) {
 	gvrk := GVRK{
 		Group:    "networking.k8s.io",
 		Version:  "v1",
@@ -495,7 +495,7 @@ func newIngressObjects(ctx context.Context, sharedInformer informers.SharedInfor
 		Kind:     "Ingress",
 	}
 
-	_, ok := resources[gvrk.ID()]
+	_, ok := resources[gvrk]
 	if ok {
 		return newIngressV1Objects(ctx, sharedInformer)
 	}
@@ -932,7 +932,7 @@ func newJobObjects(ctx context.Context, sharedInformer informers.SharedInformerF
 	return objs, nil
 }
 
-func newCronJobObjects(ctx context.Context, sharedInformer informers.SharedInformerFactory, resources map[string]GVRK) (*Objects, error) {
+func newCronJobObjects(ctx context.Context, sharedInformer informers.SharedInformerFactory, resources map[GVRK]struct{}) (*Objects, error) {
 	gvrk := GVRK{
 		Group:    "batch",
 		Version:  "v1",
@@ -940,7 +940,7 @@ func newCronJobObjects(ctx context.Context, sharedInformer informers.SharedInfor
 		Kind:     "CronJob",
 	}
 
-	_, ok := resources[gvrk.ID()]
+	_, ok := resources[gvrk]
 	if ok {
 		return newCronJobV1Objects(ctx, sharedInformer)
 	}
