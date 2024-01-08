@@ -86,7 +86,7 @@ func (oc *ObjectsController) GetServieRelations() []RelationMetric {
 				})
 			}
 
-			oc.ingressObjs.rangeIngressByNamespace(namespace, func(name string, ingress ingressEntity) {
+			oc.ingressObjs.rangeIngress(namespace, func(name string, ingress ingressEntity) {
 				for _, s := range ingress.services {
 					if s != svc.name {
 						continue

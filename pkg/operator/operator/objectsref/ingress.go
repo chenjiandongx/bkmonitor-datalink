@@ -32,7 +32,7 @@ func NewIngressMap() *IngressMap {
 	}
 }
 
-func (m *IngressMap) UpsertIngress(ingress ingressEntity) {
+func (m *IngressMap) Set(ingress ingressEntity) {
 	m.mut.Lock()
 	defer m.mut.Unlock()
 
@@ -43,7 +43,7 @@ func (m *IngressMap) UpsertIngress(ingress ingressEntity) {
 	m.ingresses[ingress.namespace][ingress.name] = ingress
 }
 
-func (m *IngressMap) DeleteIngress(namespace, name string) {
+func (m *IngressMap) Del(namespace, name string) {
 	m.mut.Lock()
 	defer m.mut.Unlock()
 
@@ -52,7 +52,7 @@ func (m *IngressMap) DeleteIngress(namespace, name string) {
 	}
 }
 
-func (m *IngressMap) rangeIngressByNamespace(namespace string, visitFunc func(name string, ingress ingressEntity)) {
+func (m *IngressMap) rangeIngress(namespace string, visitFunc func(name string, ingress ingressEntity)) {
 	m.mut.Lock()
 	defer m.mut.Unlock()
 

@@ -38,7 +38,7 @@ func NewServiceMap() *ServiceMap {
 	}
 }
 
-func (m *ServiceMap) UpsertService(service *corev1.Service) {
+func (m *ServiceMap) Set(service *corev1.Service) {
 	m.mut.Lock()
 	defer m.mut.Unlock()
 
@@ -73,7 +73,7 @@ func (m *ServiceMap) UpsertService(service *corev1.Service) {
 	}
 }
 
-func (m *ServiceMap) DeleteService(service *corev1.Service) {
+func (m *ServiceMap) Del(service *corev1.Service) {
 	m.mut.Lock()
 	defer m.mut.Unlock()
 

@@ -34,7 +34,7 @@ func NewEndpointsMap() *EndpointsMap {
 	}
 }
 
-func (m *EndpointsMap) UpsertEndpoints(endpoints *corev1.Endpoints) {
+func (m *EndpointsMap) Set(endpoints *corev1.Endpoints) {
 	m.mut.Lock()
 	defer m.mut.Unlock()
 
@@ -64,7 +64,7 @@ func (m *EndpointsMap) UpsertEndpoints(endpoints *corev1.Endpoints) {
 	}
 }
 
-func (m *EndpointsMap) DeleteEndpoints(endpoints *corev1.Endpoints) {
+func (m *EndpointsMap) Del(endpoints *corev1.Endpoints) {
 	m.mut.Lock()
 	defer m.mut.Unlock()
 

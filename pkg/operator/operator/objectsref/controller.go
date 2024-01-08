@@ -415,7 +415,7 @@ func newServiceObjects(ctx context.Context, sharedInformer informers.SharedInfor
 				logger.Errorf("excepted Service type, got %T", obj)
 				return
 			}
-			objs.UpsertService(service)
+			objs.Set(service)
 		},
 		UpdateFunc: func(_, newObj interface{}) {
 			service, ok := newObj.(*corev1.Service)
@@ -423,7 +423,7 @@ func newServiceObjects(ctx context.Context, sharedInformer informers.SharedInfor
 				logger.Errorf("excepted Service type, got %T", newObj)
 				return
 			}
-			objs.UpsertService(service)
+			objs.Set(service)
 		},
 		DeleteFunc: func(obj interface{}) {
 			service, ok := obj.(*corev1.Service)
@@ -431,7 +431,7 @@ func newServiceObjects(ctx context.Context, sharedInformer informers.SharedInfor
 				logger.Errorf("excepted Service type, got %T", obj)
 				return
 			}
-			objs.DeleteService(service)
+			objs.Del(service)
 		},
 	})
 	go informer.Run(ctx.Done())
@@ -459,7 +459,7 @@ func newEndpointsObjects(ctx context.Context, sharedInformer informers.SharedInf
 				logger.Errorf("excepted Endpoints type, got %T", obj)
 				return
 			}
-			objs.UpsertEndpoints(endpoints)
+			objs.Set(endpoints)
 		},
 		UpdateFunc: func(_, newObj interface{}) {
 			endpoints, ok := newObj.(*corev1.Endpoints)
@@ -467,7 +467,7 @@ func newEndpointsObjects(ctx context.Context, sharedInformer informers.SharedInf
 				logger.Errorf("excepted Endpoints type, got %T", newObj)
 				return
 			}
-			objs.UpsertEndpoints(endpoints)
+			objs.Set(endpoints)
 		},
 		DeleteFunc: func(obj interface{}) {
 			endpoints, ok := obj.(*corev1.Endpoints)
@@ -475,7 +475,7 @@ func newEndpointsObjects(ctx context.Context, sharedInformer informers.SharedInf
 				logger.Errorf("excepted Endpoints type, got %T", obj)
 				return
 			}
-			objs.DeleteEndpoints(endpoints)
+			objs.Del(endpoints)
 		},
 	})
 	go informer.Run(ctx.Done())
@@ -546,7 +546,7 @@ func newIngressV1Objects(ctx context.Context, sharedInformer informers.SharedInf
 				logger.Errorf("excepted Ingress type, got %T", obj)
 				return
 			}
-			objs.UpsertIngress(makeIngress(ingress.Namespace, ingress.Name, ingress.Spec.Rules))
+			objs.Set(makeIngress(ingress.Namespace, ingress.Name, ingress.Spec.Rules))
 		},
 		UpdateFunc: func(_, newObj interface{}) {
 			ingress, ok := newObj.(*networkingv1.Ingress)
@@ -554,7 +554,7 @@ func newIngressV1Objects(ctx context.Context, sharedInformer informers.SharedInf
 				logger.Errorf("excepted Ingress type, got %T", newObj)
 				return
 			}
-			objs.UpsertIngress(makeIngress(ingress.Namespace, ingress.Name, ingress.Spec.Rules))
+			objs.Set(makeIngress(ingress.Namespace, ingress.Name, ingress.Spec.Rules))
 		},
 		DeleteFunc: func(obj interface{}) {
 			ingress, ok := obj.(*networkingv1.Ingress)
@@ -562,7 +562,7 @@ func newIngressV1Objects(ctx context.Context, sharedInformer informers.SharedInf
 				logger.Errorf("excepted Ingress type, got %T", obj)
 				return
 			}
-			objs.DeleteIngress(ingress.Namespace, ingress.Name)
+			objs.Del(ingress.Namespace, ingress.Name)
 		},
 	})
 	go informer.Run(ctx.Done())
@@ -614,7 +614,7 @@ func newIngressV1BetaObjects(ctx context.Context, sharedInformer informers.Share
 				logger.Errorf("excepted Ingress type, got %T", obj)
 				return
 			}
-			objs.UpsertIngress(makeIngress(ingress.Namespace, ingress.Name, ingress.Spec.Rules))
+			objs.Set(makeIngress(ingress.Namespace, ingress.Name, ingress.Spec.Rules))
 		},
 		UpdateFunc: func(_, newObj interface{}) {
 			ingress, ok := newObj.(*networkingv1beta.Ingress)
@@ -622,7 +622,7 @@ func newIngressV1BetaObjects(ctx context.Context, sharedInformer informers.Share
 				logger.Errorf("excepted Ingress type, got %T", newObj)
 				return
 			}
-			objs.UpsertIngress(makeIngress(ingress.Namespace, ingress.Name, ingress.Spec.Rules))
+			objs.Set(makeIngress(ingress.Namespace, ingress.Name, ingress.Spec.Rules))
 		},
 		DeleteFunc: func(obj interface{}) {
 			ingress, ok := obj.(*networkingv1beta.Ingress)
@@ -630,7 +630,7 @@ func newIngressV1BetaObjects(ctx context.Context, sharedInformer informers.Share
 				logger.Errorf("excepted Ingress type, got %T", obj)
 				return
 			}
-			objs.DeleteIngress(ingress.Namespace, ingress.Name)
+			objs.Del(ingress.Namespace, ingress.Name)
 		},
 	})
 	go informer.Run(ctx.Done())
