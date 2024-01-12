@@ -38,13 +38,16 @@ func ConfigTemplateRender(config *config.ElasticSearchMetaClusterInfo) (IndexRen
 	format := storageConf.GetOrDefault("index_datetime_format", "20060102").(string)
 
 	return func(record *Record) (string, error) {
-		tm, err := utils.ParseTime(record.Document[field])
+		from := record.Document[field]
+		tm, err := utils.ParseTime(from)
 		if err != nil {
 			logging.Warnf("parse time %v error %v, use local time instead", tm, err)
 			tm = time.Now()
 		}
 
-		s := tm.In(utils.ParseFixedTimeZone(timezone)).Format(format) + separator + index
+		tf := tm.In(utils.ParseFixedTimeZone(timezone)).Format(format)
+		s := tf + separator + index
+		logging.Errorf("mandotest: field:[%s], from:[%+v], result:[%s]", field, from, tf)
 		return s, nil
 	}, nil
 }
