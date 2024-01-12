@@ -47,7 +47,7 @@ func ConfigTemplateRender(config *config.ElasticSearchMetaClusterInfo) (IndexRen
 
 		tf := tm.In(utils.ParseFixedTimeZone(timezone)).Format(format)
 		s := tf + separator + index
-		logging.Errorf("mandotest: field:[%s], from:[%+v], result:[%s]", field, from, tf)
+		logging.Errorf("mandotest: start_time:[%v], from:[%+v], result:[%s]", record.Document["start_time"], from, tf)
 		return s, nil
 	}, nil
 }
