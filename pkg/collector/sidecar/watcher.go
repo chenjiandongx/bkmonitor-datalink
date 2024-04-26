@@ -106,7 +106,7 @@ func (w *Watcher) upsertDataID(dataID *bkv1beta1.DataID) {
 	w.mut.Lock()
 	defer w.mut.Unlock()
 
-	// 只处理 collector 用途 dataid
+	// 只处理 collector 用途且 privileged scope 的 dataid
 	usage := dataID.Labels[keyUsage]
 	if !strings.HasPrefix(usage, usagePrefix) {
 		logger.Warnf("want collector dataid, but go '%s', skipped", usage)
