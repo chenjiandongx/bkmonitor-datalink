@@ -157,7 +157,9 @@ func NewPromEventV2(line string, ts int64, offsetTime time.Duration, handler Tim
 		pe.AggreValue = common.MapStr{}
 
 		// 排序 dimensions
-		pe.DimensionString = HashLabels(newLbs)
+		if hashlabel {
+			pe.DimensionString = HashLabels(newLbs)
+		}
 	}
 
 	if hashlabel {
@@ -214,9 +216,9 @@ func NewPromEventV1(line string, ts int64, offsetTime time.Duration, handler Tim
 		AggreValue: common.MapStr{},
 		TS:         timestamp,
 	}
-	pe.DimensionString = HashLabels(newLbs)
 
 	if hashlabel {
+		pe.DimensionString = HashLabels(newLbs)
 		pe.ProduceHashKey()
 	}
 
