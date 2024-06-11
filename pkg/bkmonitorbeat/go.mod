@@ -18,6 +18,7 @@ require (
 	github.com/gosnmp/gosnmp v1.32.0
 	github.com/hpcloud/tail v1.0.0
 	github.com/influxdata/telegraf v0.10.2-0.20190611181903-c9d8f7b008f6
+	github.com/json-iterator/go v1.1.12
 	github.com/magiconair/properties v1.8.1
 	github.com/mattn/go-shellwords v1.0.12
 	github.com/mdlayher/netlink v1.4.1
@@ -87,6 +88,8 @@ require (
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
 	github.com/mdlayher/socket v0.0.0-20210307095302-262dc9984e00 // indirect
 	github.com/mitchellh/hashstructure v1.0.0 // indirect
+	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
+	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/natefinch/npipe v0.0.0-20160621034901-c1b8fa8bdcce // indirect
 	github.com/nightlyone/lockfile v1.0.0 // indirect
 	github.com/opencontainers/runtime-spec v1.0.2 // indirect

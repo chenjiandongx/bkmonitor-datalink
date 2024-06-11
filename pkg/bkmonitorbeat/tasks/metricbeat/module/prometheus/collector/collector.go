@@ -330,9 +330,10 @@ func (m *MetricSet) produceEvents(line string, timestamp int64) ([]common.MapStr
 		return nil, nil, nil
 	}
 
+	hashlabel := len(m.deltaKeys) > 0
 	timeOffset := 24 * time.Hour * 365 * 2 // 默认可容忍偏移时间为两年
 	tsHandler, _ := tasks.GetTimestampHandler("s")
-	promEvent, err := tasks.NewPromEvent(line, timestamp, timeOffset, tsHandler)
+	promEvent, err := tasks.NewPromEvent(line, timestamp, timeOffset, tsHandler, hashlabel)
 	if err != nil {
 		errMsg := fmt.Sprintf("parse line=>(%s) failed, err: %s", line, err)
 		upErr := &define.BeaterUpMetricErr{Code: define.BeatMetricBeatPromFormatOuterError, Message: errMsg}

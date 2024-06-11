@@ -97,16 +97,16 @@ func hashLabels(lbs labels.Labels) uint64 {
 }
 
 // NewPromEvent 优先使用 V2 作为解析方式 出错再回退到 V1 还出错的话就抛出异常
-func NewPromEvent(line string, ts int64, offsetTime time.Duration, handler TimestampHandler) (PromEvent, error) {
-	pe, err := NewPromEventV2(line, ts, offsetTime, handler)
+func NewPromEvent(line string, ts int64, offsetTime time.Duration, handler TimestampHandler, hashlabel bool) (PromEvent, error) {
+	pe, err := NewPromEventV2(line, ts, offsetTime, handler, hashlabel)
 	if err == nil {
 		return pe, nil
 	}
 
-	return NewPromEventV1(line, ts, offsetTime, handler)
+	return NewPromEventV1(line, ts, offsetTime, handler, hashlabel)
 }
 
-func NewPromEventV2(line string, ts int64, offsetTime time.Duration, handler TimestampHandler) (PromEvent, error) {
+func NewPromEventV2(line string, ts int64, offsetTime time.Duration, handler TimestampHandler, hashlabel bool) (PromEvent, error) {
 	// \n 为解析分隔符
 	if !strings.HasSuffix(line, "\n") {
 		line = line + "\n"
@@ -160,11 +160,13 @@ func NewPromEventV2(line string, ts int64, offsetTime time.Duration, handler Tim
 		pe.DimensionString = HashLabels(newLbs)
 	}
 
-	pe.ProduceHashKey()
+	if hashlabel {
+		pe.ProduceHashKey()
+	}
 	return pe, nil
 }
 
-func NewPromEventV1(line string, ts int64, offsetTime time.Duration, handler TimestampHandler) (PromEvent, error) {
+func NewPromEventV1(line string, ts int64, offsetTime time.Duration, handler TimestampHandler, hashlabel bool) (PromEvent, error) {
 	if !strings.HasSuffix(line, "\n") {
 		line = line + "\n"
 	}
@@ -213,7 +215,10 @@ func NewPromEventV1(line string, ts int64, offsetTime time.Duration, handler Tim
 		TS:         timestamp,
 	}
 	pe.DimensionString = HashLabels(newLbs)
-	pe.ProduceHashKey()
+
+	if hashlabel {
+		pe.ProduceHashKey()
+	}
 
 	return pe, nil
 }

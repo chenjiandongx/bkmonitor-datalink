@@ -31,7 +31,7 @@ func FormatOutput(out []byte, ts int64, offsetTime time.Duration, handler tasks.
 			continue
 		}
 
-		promEvent, promErr := tasks.NewPromEvent(line, ts, offsetTime, handler)
+		promEvent, promErr := tasks.NewPromEvent(line, ts, offsetTime, handler, true)
 		if promErr != nil {
 			logger.Warnf("parse line=>(%s) failed,error:%s", line, promErr)
 			outputErr = promErr
