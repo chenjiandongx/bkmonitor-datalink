@@ -19,6 +19,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/TencentBlueKing/bkmonitor-datalink/pkg/bkmonitorbeat/json"
+	"github.com/TencentBlueKing/bkmonitor-datalink/pkg/libgse/output/gse"
 	libbeat "github.com/elastic/beats/libbeat/beat"
 	"github.com/elastic/beats/libbeat/cmd/instance"
 	"github.com/elastic/beats/libbeat/publisher/processing"
@@ -54,6 +56,10 @@ func registerValidators() {
 func ignoreSignal(c chan os.Signal) {
 	s := <-c
 	logger.Infof("Got signal:%v", s)
+}
+
+func init() {
+	gse.MarshalFunc = json.Marshal
 }
 
 func main() {
