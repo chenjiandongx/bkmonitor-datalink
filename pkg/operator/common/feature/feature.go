@@ -10,7 +10,11 @@
 package feature
 
 import (
+	"bytes"
+	"encoding/json"
 	"strings"
+
+	"k8s.io/client-go/util/jsonpath"
 )
 
 const (
@@ -55,17 +59,19 @@ func parseSelector(s string) map[string]string {
 }
 
 type LabelJoinMatcherSpec struct {
-	Kind        string
-	Annotations []string
-	Labels      []string
+	Kind            string
+	Annotations     []string
+	Labels          []string
+	AnnotationsFunc map[string]func(s string) string
+	LabelsFunc      map[string]func(s string) string
 }
 
 // parseLabelJoinMatcher 解析 labeljoin 规则
 // Kind://[label:custom_label|annotation:custom_annotation,...]
 func parseLabelJoinMatcher(s string) *LabelJoinMatcherSpec {
 	const (
-		annotationPrefix = "annotation:"
-		labelPrefix      = "label:"
+		annotationPrefix = "annotation"
+		labelPrefix      = "label"
 	)
 
 	switch {
@@ -75,23 +81,79 @@ func parseLabelJoinMatcher(s string) *LabelJoinMatcherSpec {
 		return nil
 	}
 
+	parseFunc := func(k string) func(string) string {
+		if !strings.Contains(k, ")") {
+			return nil
+		}
+
+		return func(s string) string {
+			left := strings.Index(k, "(")
+			right := strings.Index(k, ")")
+
+			template := k[left+1 : right]
+			var pointsData interface{}
+			err := json.Unmarshal([]byte(s), &pointsData)
+			if err != nil {
+				return s
+			}
+
+			j := jsonpath.New("jsonpath")
+			j.AllowMissingKeys(false)
+			if err := j.Parse(template); err != nil {
+				return s
+			}
+
+			buf := new(bytes.Buffer)
+			if err := j.Execute(buf, pointsData); err != nil {
+				return s
+			}
+			return buf.String()
+		}
+	}
+
+	parseKey := func(k string) (string, string, func(string) string) {
+		if strings.HasPrefix(k, annotationPrefix+":") {
+			return annotationPrefix, strings.TrimSpace(k[len(annotationPrefix)+1:]), nil
+		}
+		if strings.HasPrefix(k, labelPrefix+":") {
+			return labelPrefix, strings.TrimSpace(k[len(labelPrefix)+1:]), nil
+		}
+
+		if strings.HasPrefix(k, annotationPrefix+"(") && strings.Contains(k, ":") {
+			return annotationPrefix, k[strings.Index(k, ":")+1:], parseFunc(k[len(annotationPrefix):])
+		}
+		if strings.HasPrefix(k, labelPrefix+"(") && strings.Contains(k, ":") {
+			return labelPrefix, k[strings.Index(k, ":")+1:], parseFunc(k[len(labelPrefix):])
+		}
+		return "", "", nil
+	}
+
 	var annotations []string
 	var labels []string
+
+	annotationsFunc := make(map[string]func(string) string)
+	labelsFunc := make(map[string]func(string) string)
 	parts := strings.Split(s, ",")
 	for _, part := range parts {
 		k := strings.TrimSpace(part)
-		switch {
-		case strings.HasPrefix(k, annotationPrefix):
-			annotations = append(annotations, strings.TrimSpace(k[len(annotationPrefix):]))
-		case strings.HasPrefix(k, labelPrefix):
-			labels = append(labels, strings.TrimSpace(k[len(labelPrefix):]))
+
+		prefix, decodedKey, f := parseKey(k)
+		switch prefix {
+		case annotationPrefix:
+			annotations = append(annotations, decodedKey)
+			annotationsFunc[decodedKey] = f
+		case labelPrefix:
+			labels = append(labels, decodedKey)
+			labelsFunc[decodedKey] = f
 		}
 	}
 
 	return &LabelJoinMatcherSpec{
-		Kind:        "Pod",
-		Annotations: annotations,
-		Labels:      labels,
+		Kind:            "Pod",
+		Annotations:     annotations,
+		Labels:          labels,
+		LabelsFunc:      labelsFunc,
+		AnnotationsFunc: annotationsFunc,
 	}
 }
 

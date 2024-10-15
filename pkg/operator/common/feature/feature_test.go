@@ -49,19 +49,42 @@ func TestParseSelector(t *testing.T) {
 
 func TestParseLabelJoinMatcher(t *testing.T) {
 	cases := []struct {
-		input       string
-		annotations []string
-		labels      []string
+		input string
+
+		annotations       []string
+		annotationsInput  map[string]string
+		annotationsOutput map[string]string
+
+		labels       []string
+		labelsInput  map[string]string
+		labelsOutput map[string]string
 	}{
 		{
 			input:       "Pod://annotation:biz.service,annotation:biz.set,label:zone.key1,label:zone.key2",
 			annotations: []string{"biz.service", "biz.set"},
 			labels:      []string{"zone.key1", "zone.key2"},
+			annotationsInput: map[string]string{
+				"biz.service": "test-service",
+				"biz.set":     "test-set",
+			},
+			annotationsOutput: map[string]string{
+				"biz.service": "test-service",
+				"biz.set":     "test-set",
+			},
 		},
 		{
 			input:       "Pod:// annotation: biz.service, annotation: biz.set, label: zone.key1, label: zone.key2",
 			annotations: []string{"biz.service", "biz.set"},
 			labels:      []string{"zone.key1", "zone.key2"},
+		},
+		{
+			input:       "Pod://annotation({[0]['id']}):biz.service,annotation:biz.set,label:zone.key1,label:zone.key2",
+			annotations: []string{"biz.service", "biz.set"},
+			labels:      []string{"zone.key1", "zone.key2"},
+			annotationsInput: map[string]string{
+				"biz.service": `[{"id":"test-service","foo":"bar"}]`,
+				"biz.set":     "test-set",
+			},
 		},
 	}
 
@@ -69,5 +92,17 @@ func TestParseLabelJoinMatcher(t *testing.T) {
 		matcher := parseLabelJoinMatcher(c.input)
 		assert.Equal(t, c.annotations, matcher.Annotations)
 		assert.Equal(t, c.labels, matcher.Labels)
+
+		for _, s := range matcher.Annotations {
+			v, ok := c.annotationsInput[s]
+			if !ok {
+				continue
+			}
+
+			f := matcher.AnnotationsFunc[s]
+			if f != nil {
+				t.Log(f(v))
+			}
+		}
 	}
 }
