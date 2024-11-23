@@ -75,12 +75,13 @@ type tgWithTime struct {
 }
 
 // FetchTargetGroups 获取缓存 targetgroups
-func FetchTargetGroups(uk string) []*targetgroup.Group {
+// 利用 duration 可以达到增量计算的能力 减少计算开销
+func FetchTargetGroups(uk string, duration time.Duration) []*targetgroup.Group {
 	sharedDiscoveryLock.Lock()
 	defer sharedDiscoveryLock.Unlock()
 
 	if d, ok := sharedDiscoveryMap[uk]; ok {
-		return d.fetch()
+		return d.fetch(duration)
 	}
 
 	return nil
@@ -155,12 +156,10 @@ func (sd *SharedDiscovery) start() {
 			for _, tg := range tgs {
 				logger.Debugf("targetgroup %s updated at: %v", tg.Source, now)
 				_, ok := sd.store[tg.Source]
-				if !ok {
+				if !ok && len(tg.Targets) == 0 {
 					// 第一次记录且没有 targets 则跳过
-					if tg == nil || len(tg.Targets) == 0 {
-						logger.Debugf("sharedDiscovery %s skip tg source '%s'", sd.uk, tg.Source)
-						continue
-					}
+					logger.Debugf("sharedDiscovery %s skip tg source '%s'", sd.uk, tg.Source)
+					continue
 				}
 				sd.store[tg.Source] = &tgWithTime{tg: tg, updatedAt: now.Unix()}
 			}
@@ -171,19 +170,15 @@ func (sd *SharedDiscovery) start() {
 			now := time.Now().Unix()
 
 			var total int
-			for source, tg := range sd.store {
+			for source, tgt := range sd.store {
 				// 超过 10 分钟未更新且已经没有目标的对象需要删除
 				// 确保 basediscovery 已经处理了删除事件
-				if now-tg.updatedAt > 600 {
-					if tg.tg == nil || len(tg.tg.Targets) == 0 {
-						delete(sd.store, source)
-						sd.mm.IncDeletedTgSourceCounter()
-						logger.Infof("sharedDiscovery %s delete tg source '%s'", sd.uk, source)
-					}
+				if now-tgt.updatedAt > 600 && len(tgt.tg.Targets) == 0 {
+					delete(sd.store, source)
+					sd.mm.IncDeletedTgSourceCounter()
+					logger.Infof("sharedDiscovery %s delete tg source '%s'", sd.uk, source)
 				}
-				if tg.tg != nil {
-					total += len(tg.tg.Targets)
-				}
+				total += len(tgt.tg.Targets)
 			}
 			sd.mm.SetTargetCount(total)
 			sd.mut.Unlock()
@@ -191,13 +186,21 @@ func (sd *SharedDiscovery) start() {
 	}
 }
 
-func (sd *SharedDiscovery) fetch() []*targetgroup.Group {
+func (sd *SharedDiscovery) fetch(duration time.Duration) []*targetgroup.Group {
 	sd.mut.RLock()
 	defer sd.mut.RUnlock()
 
-	ret := make([]*targetgroup.Group, 0, len(sd.store))
-	for _, v := range sd.store {
-		ret = append(ret, v.tg)
+	durSecs := int64(duration.Seconds())
+	now := time.Now().Unix()
+
+	var ret []*targetgroup.Group
+	for _, tgt := range sd.store {
+		// 在跨度周期内 tg 有更新过 则同步给调用方
+		// 删除事件也是一种更新 只是 Targets 被置空
+		// 未设置 duration 时返回全量 Groups
+		if now-tgt.updatedAt < durSecs || durSecs == 0 {
+			ret = append(ret, tgt.tg)
+		}
 	}
 	return ret
 }

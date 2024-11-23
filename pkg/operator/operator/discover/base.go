@@ -380,17 +380,24 @@ func (d *BaseDiscover) loopHandleTargetGroup() {
 
 		case <-ticker.C:
 			counter++
+			maxSpan := duration * 2
+
 			// 避免 skip 情况下多申请不必要的内存
 			updatedAt := shareddiscovery.FetchTargetGroupsUpdatedAt(d.UK())
 			logger.Debugf("%s updated at: %v", d.Name(), time.Unix(updatedAt, 0))
-			if time.Now().Unix()-updatedAt > duration*2 && counter%resync != 0 && d.fetched {
+			if time.Now().Unix()-updatedAt > maxSpan && counter%resync != 0 && d.fetched {
 				logger.Debugf("%s found nothing changed, skip targetgourps handled", d.Name())
 				continue
 			}
 			d.fetched = true
 
+			dur := time.Duration(maxSpan) * time.Second
+			// resync 时同步一次全量数据作为兜底方案
+			if counter%resync == 0 {
+				dur = 0
+			}
 			// 真正需要变更时才 fetch targetgroups
-			tgList := shareddiscovery.FetchTargetGroups(d.UK())
+			tgList := shareddiscovery.FetchTargetGroups(d.UK(), dur)
 			for _, tg := range tgList {
 				if tg == nil {
 					continue
