@@ -399,9 +399,6 @@ func (d *BaseDiscover) loopHandleTargetGroup() {
 			// 真正需要变更时才 fetch targetgroups
 			tgList := shareddiscovery.FetchTargetGroups(d.UK(), dur)
 			for _, tg := range tgList {
-				if tg == nil {
-					continue
-				}
 				logger.Debugf("%s get targets source: %s, targets: %+v, labels: %+v", d.Name(), tg.Source, tg.Targets, tg.Labels)
 				d.handleTargetGroup(tg)
 			}

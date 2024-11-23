@@ -154,6 +154,9 @@ func (sd *SharedDiscovery) start() {
 			sd.mut.Lock()
 			now := time.Now()
 			for _, tg := range tgs {
+				if tg == nil {
+					continue
+				}
 				logger.Debugf("targetgroup %s updated at: %v", tg.Source, now)
 				_, ok := sd.store[tg.Source]
 				if !ok && len(tg.Targets) == 0 {
