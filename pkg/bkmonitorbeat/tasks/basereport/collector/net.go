@@ -73,7 +73,7 @@ func getProtocolStats() (map[string]map[string]int64, error) {
 			}
 			origin[pc.Protocol][normalizeKey] = value
 
-			var lastV int64
+			lastV := value // 如果取不到上一个周期的话置 0 否则可能会取到一个非常大的数值
 			if lastCounter, ok := lastProtoCounters[pc.Protocol]; ok {
 				lastV = lastCounter[normalizeKey]
 			}
