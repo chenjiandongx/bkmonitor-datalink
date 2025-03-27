@@ -60,22 +60,30 @@ func getProtocolStats() (map[string]map[string]int64, error) {
 		return nil, err
 	}
 
-	counters := make(map[string]map[string]int64)
+	ret := make(map[string]map[string]int64)
+	origin := make(map[string]map[string]int64)
 	for _, pc := range protoCounters {
 		counter := make(map[string]int64)
 		for key, value := range pc.Stats {
-			var lastV int64
 			normalizeKey := common.FirstCharToLower(key)
+
+			// 记录原始数据值
+			if _, ok := origin[pc.Protocol]; !ok {
+				origin[pc.Protocol] = make(map[string]int64)
+			}
+			origin[pc.Protocol][normalizeKey] = value
+
+			var lastV int64
 			if lastCounter, ok := lastProtoCounters[pc.Protocol]; ok {
 				lastV = lastCounter[normalizeKey]
 			}
-			counter[normalizeKey] = value - lastV
+			counter[normalizeKey] = value - lastV // 计算两个周期差值
 		}
-		counters[pc.Protocol] = counter
+		ret[pc.Protocol] = counter
 	}
 
-	lastProtoCounters = counters
-	return counters, nil
+	lastProtoCounters = origin
+	return ret, nil
 }
 
 func getStatByIOCounterStat(stat []net.IOCountersStat) ([]Stat, error) {
